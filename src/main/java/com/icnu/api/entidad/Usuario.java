@@ -1,10 +1,8 @@
 package com.icnu.api.entidad;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,9 +24,14 @@ public class Usuario {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    //para evitar que la contraseña salga en los JSON
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "contrasenia", nullable = false, length = 60)
     private String contrasenia;
 
+    @ManyToOne
+    @JoinColumn(name = "rol_id", nullable = false)
+    private Rol rol;
     //clave foránea con pacientes
     @ManyToMany
     @JoinTable(
@@ -39,4 +42,5 @@ public class Usuario {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<Paciente> pacientes = new ArrayList<>();
+
 }//class
