@@ -1,0 +1,64 @@
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# ==========================================
+# ARCHIVOS SENSIBLES (Credenciales)
+# ==========================================
+# Ignoramos las propiedades para no subir contraseñas de la base de datos
+src/main/resources/application.properties
+src/main/resources/application.yml
+src/main/resources/application-*.properties
+src/main/resources/application-*.yml
+.env
+
+# ==========================================
+# GRADLE Y COMPILADOS
+# ==========================================
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradlew
+!gradlew.bat
+HELP.md
+.gradle
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ==========================================
+# ENTORNOS DE DESARROLLO (IDE)
+# ==========================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# VS Code
+.vscode/
+
+# ==========================================
+# SISTEMA OPERATIVO
+# ==========================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==========================================
+# LOGS Y TEMPORALES
+# ==========================================
+*.log
+*.tmp
