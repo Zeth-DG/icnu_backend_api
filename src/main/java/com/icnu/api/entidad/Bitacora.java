@@ -20,7 +20,7 @@ public class Bitacora {
     @Column(name = "fecha", nullable = false)
     private LocalDateTime fecha;
 
-    @Column(name = "notas", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "notas", columnDefinition = "TEXT")
     private String notas;
 
     //claves foráneas
@@ -33,6 +33,10 @@ public class Bitacora {
     private Paciente paciente;
 
     @ManyToOne
-    @JoinColumn(name = "accion_id_accion", nullable = false)
+    @JoinColumn(name = "accion_id_accion")
     private Accion accion;
+
+    public boolean existById(Long id) {
+        return true;
+    }
 }//class Bitacora
