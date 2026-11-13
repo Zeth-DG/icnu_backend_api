@@ -7,7 +7,6 @@ import java.util.Optional;
 
 public interface BitacoraRepository extends JpaRepository<Bitacora, Long> {
 
-    Optional<Bitacora> findById(Long id);
 }
 
 

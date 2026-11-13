@@ -13,6 +13,7 @@ import java.util.Optional;
 @Entity
 @Table(name="roles")
 public class Rol {
+    public static Rol admin;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, unique = true)
@@ -22,3 +23,4 @@ public class Rol {
     private String nombre;
 
 }//class Rol
+

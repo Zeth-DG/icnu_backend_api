@@ -1,9 +1,9 @@
 package com.icnu.api.servicio;
 
 
-import com.icnu.api.entidad.Bitacora;
-import com.icnu.api.entidad.Paciente;
-import com.icnu.api.entidad.Usuario;
+import com.icnu.api.dtos.BitacoraRequestDto;
+import com.icnu.api.dtos.BitacoraResponseDto;
+import com.icnu.api.entidad.*;
 import com.icnu.api.repositorio.AccionRepository;
 import com.icnu.api.repositorio.BitacoraRepository;
 import com.icnu.api.repositorio.PacienteRepository;
@@ -12,7 +12,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 
@@ -32,6 +31,7 @@ public class BitacoraService {
                 .orElseThrow( () -> new IllegalArgumentException("No existe una bitacora con id " + id));
     } //getBitacora
 
+
     public Bitacora deleteBitacora(Long id) {
         Bitacora bitacora = null;
 
@@ -44,38 +44,76 @@ public class BitacoraService {
     } //deleteBitacora
 
     @Transactional
-    public Bitacora addBitacora (Bitacora bitacora) {
+    public BitacoraResponseDto  addBitacora (BitacoraRequestDto request) {
 
-        // Validar los datos recibidos
-        if( bitacora.getFecha() == null){
-            throw new IllegalArgumentException("La fecha es obligatoria");
-        }//if
+        //Recupera usuario que registra la bitacora
+        Usuario usuario = usuarioRepository.findById(request.usuarioId())
+                .orElseThrow( () -> new RuntimeException("Usuario no encontrado"));
 
-        if(bitacora.getUsuario() == null || bitacora.getPaciente() == null){
-            throw new IllegalArgumentException("Usuario y paciente son obligatorios");
-        } //if
+        // Recupera paciente que registra la bitacora
+        Paciente paciente = pacienteRepository.findById(request.pacienteId())
+                .orElseThrow( () -> new RuntimeException("Usuario no encontrado"));
 
-        // Recupera las entidades relacionadas
-        Long usuarioId = bitacora.getUsuario().getId();
-        Usuario usuario = usuarioRepository.findById(usuarioId).get();
-
-        Long pacienteId = bitacora.getPaciente().getId();
-        Paciente paciente  = pacienteRepository.findById(pacienteId).get();
-
-        LocalDateTime fecha = bitacora.getFecha();
+        Bitacora bitacora = new Bitacora();  //crea nueva entidad bitacora
 
         //Asigna los valores
-        bitacora.setFecha(fecha);
         bitacora.setPaciente(paciente);
         bitacora.setUsuario(usuario);
+        bitacora.setFecha( request.fecha() != null ? request.fecha() : LocalDateTime.now() );
 
-        return bitacoraRepository.save(bitacora);
+        if ( request.accionId() != null ){ // asigna accion sólo si se recibe
+
+            if( usuario.getRol() != Rol.admin) {
+                throw new RuntimeException("Sólo el usuario admin puede registrar acciones");
+            } // if es admin
+
+            Accion accion = accionRepository.findById(request.accionId())
+                    .orElseThrow( () -> new RuntimeException("Accion no encontrada"));
+
+            bitacora.setAccion(accion);
+
+        } // if se recibe accion
+
+        // Bitacora actualizada
+        Bitacora b = bitacoraRepository.save(bitacora);
+
+        // Convertir entidad a DTO de respuesta:
+        return new BitacoraResponseDto(
+                b.getId(),
+                b.getFecha(),
+                b.getNotas(),
+                b.getUsuario().getId(),
+                b.getPaciente().getId(),
+                b.getAccion() != null ? b.getAccion().getId() : null
+        );
     } // addBitacora
 
 
+    @Transactional
+    public Bitacora uppdateBitacora (Long id, Bitacora bitacora) {
 
-    public Bitacora uppdateBitacora () {
-        return null;
+        Bitacora  bit = bitacoraRepository.findById(id)
+
+        .orElseThrow( () -> new RuntimeException("Bitácora no encontrada"));
+
+        if(bitacora.getFecha() != null )
+            bit.setFecha(bitacora.getFecha()); //actualiza fecha si se recibió
+
+
+        if(bitacora.getNotas() !=null)
+            bit.setNotas(bitacora.getNotas().trim());
+
+        if(bitacora.getAccion() != null && bitacora.getAccion().getId() != null ) {
+            Accion accion = accionRepository.findById(bitacora.getAccion().getId())
+                            .orElseThrow( () -> new RuntimeException("Acción no encontrada"));
+
+            bit.setAccion(accion);
+        }
+
+            Bitacora b= bitacoraRepository.save(bit);
+
+
+        return b;
     } // updateBitacora
 
 
