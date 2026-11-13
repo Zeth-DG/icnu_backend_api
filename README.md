@@ -68,3 +68,27 @@ Esta es la lista de tareas pendientes para tener la API funcional:
    spring.datasource.password=tu_contraseña
    ```
 4. Ejecutar el proyecto. Hibernate creará las tablas automáticamente.
+
+
+---
+
+## DTOs de Bitácora
+
+Un DTO (*Data Transfer Object*) define los datos que la API recibe o devuelve. Para Bitácora, se recomienda separar el DTO de entrada (`Request`) del DTO de salida (`Response`), porque el frontend no necesita enviar y recibir exactamente los mismos datos.
+
+### Request DTO: datos que recibe la API
+
+`BitacoraRequestDTO` representa los datos necesarios para crear una bitácora. Recibe los IDs de las entidades relacionadas, no los objetos completos `Usuario`, `Paciente` y `Accion`. No incluye el ID de Bitácora porque este se genera automáticamente al guardar el registro.
+
+
+`BitacoraResponsetDTO` representa los datos que la API devuelve después de guardar la bitácora. Puede incluir el ID generado y solo la información necesaria para el frontend.
+
+### ¿Por qué separar Request y Response?
+
+- El cliente no envía el ID autoincremental; la base de datos lo genera.
+- La API controla qué datos acepta y cuáles devuelve.
+- Se evita exponer directamente la entidad JPA y todas sus relaciones.
+- Se pueden cambiar los datos de entrada y salida sin modificar la entidad ni la base de datos.
+- Se reducen problemas de serialización, como relaciones cíclicas o respuestas demasiado grandes.
+
+`notas` y `accionId` pueden ser nulos si esos campos son opcionales. El proyecto utiliza Java 21, por lo que puede usar `record` para declarar DTOs de forma concisa. Sus componentes no tienen setters; se accede a ellos con métodos como `dto.fecha()` y `dto.usuarioId()`.
