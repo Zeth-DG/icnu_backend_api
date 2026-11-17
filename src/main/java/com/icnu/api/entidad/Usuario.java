@@ -32,6 +32,7 @@ public class Usuario {
     @ManyToOne
     @JoinColumn(name = "rol_id", nullable = false)
     private Rol rol;
+
     //clave foránea con pacientes
     @ManyToMany
     @JoinTable(
