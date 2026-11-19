@@ -155,4 +155,5 @@ public class PacienteService {
     private static boolean esAdmin(Usuario usuario) {
         return Roles.ADMIN.equals(usuario.getRol().getNombre());
     }//es admin?
+
 }//class

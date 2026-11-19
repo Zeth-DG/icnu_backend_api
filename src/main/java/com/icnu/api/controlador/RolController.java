@@ -36,7 +36,7 @@ public class RolController {
     }//crear
 
     @PreAuthorize("hasAuthority('ADMIN')")
-    @PostMapping("/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         rolService.eliminar(id);
         return ResponseEntity.noContent().build();
