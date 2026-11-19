@@ -1,51 +1,59 @@
 package com.icnu.api.servicio;
 
-import com.icnu.api.config.JwtFilter;
-import com.icnu.api.dtos.LoginRequest;
 import com.icnu.api.entidad.Usuario;
-import com.icnu.api.repositorio.UsuarioRepository;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Calendar;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
-import java.util.Optional;
 
 @Service
 public class JwtService {
-    @Autowired
-    PasswordEncoder encoder;
 
-    private final UsuarioRepository usuarioRepository;
+    private final SecretKey key;
+    private final Duration expiration;
 
-    public JwtService(UsuarioRepository usuarioRepository) {
-        this.usuarioRepository = usuarioRepository;
-    }//constructor
+    public JwtService(
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.expiration-hours:24}") long expirationHours) {
+        if (secret == null || secret.length() < 32) {
+            throw new IllegalStateException(
+                    "app.jwt.secret debe tener al menos 32 caracteres (HS256)"
+            );
+        }//if
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.expiration = Duration.ofHours(expirationHours);
+    }//jwt service
 
-    public boolean validarUsuario(LoginRequest request) {
-        Optional<Usuario> usuario = usuarioRepository.findByEmail(request.getEmail());
-        if(usuario.isPresent()) {
-            Usuario usr = usuario.get();
-
-            if (encoder.matches(request.getContrasenia(), usr.getContrasenia())) {
-                return true;
-            }//if interno
-        }//if externo
-
-        return false;
-    }//validarUsuario
-
-    public String generarToken(String email) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.HOUR, 24); //token que expira después de 24 horas
-        return Jwts
-                .builder()
-                .subject(email)
-                .issuedAt(new Date())
-                .expiration(calendar.getTime())
-                .signWith(JwtFilter.getSignInKey())
+    public String generarToken(Usuario usuario) {
+        Instant ahora = Instant.now();
+        return  Jwts.builder()
+                .subject(usuario.getEmail())
+                .claim("uid", usuario.getId())
+                .claim("rol", usuario.getRol().getNombre())
+                .issuedAt(Date.from(ahora))
+                .expiration(Date.from(ahora.plus(expiration)))
+                .signWith(key)
                 .compact();
-    }//generarToken
+    }//generar token
+
+    /**
+     * Lanza io.jsonwebtoken.JwtException si el token es inválido, está
+     * manipulado o ha expirado. El filtro es quien decide el HTTP 401.
+     */
+
+    public Claims parsear(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }//parsing del token
+
 }//class

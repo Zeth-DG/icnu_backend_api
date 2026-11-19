@@ -1,11 +1,20 @@
 package com.icnu.api.servicio;
 
+import com.icnu.api.dtos.PacienteRequestDto;
+import com.icnu.api.dtos.PacienteResponseDto;
 import com.icnu.api.entidad.Paciente;
 import com.icnu.api.entidad.Usuario;
+import com.icnu.api.excepciones.AccesoDenegadoException;
+import com.icnu.api.excepciones.ResourceNotFoundException;
+import com.icnu.api.repositorio.BitacoraRepository;
 import com.icnu.api.repositorio.PacienteRepository;
 import com.icnu.api.repositorio.UsuarioRepository;
+import com.icnu.api.util.Roles;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,74 +22,137 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class PacienteService {
-    private final UsuarioRepository usuarioRepository;
+
     private final PacienteRepository pacienteRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final BitacoraRepository bitacoraRepository;
 
-    public Paciente agregarPaciente(Paciente paciente, Long usuarioId) {
-        // Buscar al usuario en la BD
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow( () -> new IllegalArgumentException("El usuario con el id [" + usuarioId + "] no existe") );
+    @Transactional(readOnly = true)
+    public Page<PacienteResponseDto> listar(Pageable pageable, String emailAutenticado) {
+        Usuario actual = usuarioActual(emailAutenticado);
 
-        //guardar el paciente para que se genere su ID en la BD
-        Paciente nuevoPaciente = pacienteRepository.save(paciente);
-        //asignar al usuario
-        usuario.getPacientes().add(nuevoPaciente);
-        //actualizar la tabla intermedia
-        usuarioRepository.save(usuario);
+        Page<Paciente> pagina = esAdmin(actual)
+                ? pacienteRepository.findAll(pageable)
+                : pacienteRepository.findByCuidadores_Id(actual.getId(), pageable);
+        return pagina.map(PacienteResponseDto::from);
+    }//listar
 
-        return nuevoPaciente;
+    @Transactional(readOnly = true)
+    public PacienteResponseDto obtener(Long id, String emailAutenticado) {
+        Paciente paciente = buscar(id);
+        verificarAcceso(paciente, emailAutenticado);
+        return PacienteResponseDto.from(paciente);
+    }//obtener
+
+    @Transactional
+    public PacienteResponseDto crear(PacienteRequestDto dto, String emailAutenticado) {
+        Usuario actual = usuarioActual(emailAutenticado);
+
+        Paciente paciente = new Paciente();
+        aplicar(dto, paciente);
+        paciente = pacienteRepository.save(paciente);
+
+        // Lado dueño de la relación N:M: Usuario.pacientes
+        actual.getPacientes().add(paciente);
+
+        return PacienteResponseDto.from(paciente);
     }//agregarPaciente
 
-    public List<Paciente> obtenerPacientesDeUsuario(Long usuarioId) {
-        // Buscar al usuario en la BD
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow( () -> new IllegalArgumentException("El usuario con el id [" + usuarioId + "] no existe") );
-        // Devolver la lista de pacientes que ya está dentro de ese objeto Usuario
-        return usuario.getPacientes();
-    }//obtener pacientes por usuario
 
-    public Paciente obtenerPacientePorId(Long id) {
-        return pacienteRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("El paciente con el id ["+id+"] no existe"));
-    }//obtener paciente por id
+    @Transactional
+    public PacienteResponseDto actualizar(
+            Long id,
+            PacienteRequestDto dto,
+            String emailAutenticado) {
 
-    public Usuario asignarPaciente(Long pacienteId, Long usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow( () -> new IllegalArgumentException("Usuario no encontrado") );
+        Paciente paciente = buscar(id);
+        verificarAcceso(paciente, emailAutenticado);
 
-        Paciente paciente = pacienteRepository.findById(pacienteId)
-                .orElseThrow( () -> new IllegalArgumentException("Paciente no encontrado") );
-
-        // Agregar el paciente a la lista del usuario
-        usuario.getPacientes().add(paciente);
-
-        // Guardar al usuario para que Hibernate actualice la tabla intermedia
-        return usuarioRepository.save(usuario);
-    }//asignar paciente a un usuario
-
-    public Paciente actualizarPaciente(Long id, Paciente pacienteActualizado) {
-        //buscar paciente
-        Paciente pacienteOriginal = pacienteRepository.findById(id)
-                .orElseThrow(()-> new IllegalArgumentException("El paciente con el id ["+id+"] no existe"));
-
-        //actualizar los campos
-        pacienteOriginal.setNombre(pacienteActualizado.getNombre());
-        pacienteOriginal.setFechaNacimiento(pacienteActualizado.getFechaNacimiento());
-        pacienteOriginal.setAlergias(pacienteActualizado.getAlergias());
-        pacienteOriginal.setEnfermedades(pacienteActualizado.getEnfermedades());
-        pacienteOriginal.setDiscapacidad(pacienteActualizado.getDiscapacidad());
-        pacienteOriginal.setFamiliarEmergencia(pacienteActualizado.getFamiliarEmergencia());
-        pacienteOriginal.setMedicoEmergencia(pacienteActualizado.getMedicoEmergencia());
-
-        //guardamos los cambios
-        return pacienteRepository.save(pacienteOriginal);
+        aplicar(dto, paciente);
+        return PacienteResponseDto.from(paciente);
     }//actualizar información del paciente
 
-    public void eliminarPaciente(Long id) {
-        Paciente paciente = pacienteRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("El paciente con el id ["+id+"] no existe"));
+    @Transactional
+    public PacienteResponseDto asignarCuidador(Long pacienteId, Long usuarioId) {
+        Paciente paciente = buscar(pacienteId);
+
+        Usuario cuidador = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "El usuario con el id [" + usuarioId + "] no existe."));
+
+        boolean yaAsignado = cuidador.getPacientes().stream()
+                .anyMatch(p -> p.getId().equals(pacienteId));
+
+        if (!yaAsignado) {
+            cuidador.getPacientes().add(paciente);
+        }
+        return PacienteResponseDto.from(paciente);
+    }//asignar
+
+    @Transactional
+    public void desasignarCuidador(Long pacienteId, Long usuarioId) {
+        Usuario cuidador = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "El usuario con el id [" + usuarioId + "] no existe."));
+
+        cuidador.getPacientes().removeIf(p -> p.getId().equals(pacienteId));
+    }//desasignar
+
+    @Transactional
+    public void eliminar(Long id) {
+        Paciente paciente = buscar(id);
+
+        // 1. Las bitácoras tienen FK al paciente: hay que borrarlas primero.
+        bitacoraRepository.deleteByPaciente_Id(id);
+
+        // 2. El paciente es el lado inverso del N:M: hay que desvincularlo.
+        List<Usuario> cuidadores = usuarioRepository.findByPacientes_Id(id);
+        cuidadores.forEach(cuidador ->
+                cuidador.getPacientes().removeIf(p -> p.getId().equals(id)));
+
+        // 3. Ahora sí.
         pacienteRepository.delete(paciente);
     }//eliminarPaciente
 
+    private void aplicar(PacienteRequestDto dto, Paciente paciente) {
+        paciente.setNombre(dto.nombre().trim());
+        paciente.setFechaNacimiento(dto.fechaNacimiento());
+        paciente.setAlergias(dto.alergias());
+        paciente.setEnfermedades(dto.enfermedades());
+        paciente.setDiscapacidad(dto.discapacidad());
+        paciente.setFamiliarEmergencia(dto.familiarEmergencia());
+        paciente.setMedicoEmergencia(dto.medicoEmergencia());
+    }//aplicar cambios
 
+    private Paciente buscar(Long id) {
+        return pacienteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "El paciente con el id [" + id + "] no existe."));
+    }//buscar
+
+    private void verificarAcceso(Paciente paciente, String emailAutenticado) {
+        Usuario actual = usuarioActual(emailAutenticado);
+
+        if (esAdmin(actual)) {
+            return;
+        }//if
+
+        boolean esCuidador = pacienteRepository
+                .existsByIdAndCuidadores_Id(paciente.getId(), actual.getId());
+
+        if (!esCuidador) {
+            throw new AccesoDenegadoException(
+                    "No tienes acceso a este paciente.");
+        }//if
+    }//verificar acceso
+
+    private Usuario usuarioActual(String email) {
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "El usuario autenticado ya no existe."));
+    }//usuarioActual
+
+    private static boolean esAdmin(Usuario usuario) {
+        return Roles.ADMIN.equals(usuario.getRol().getNombre());
+    }//es admin?
 }//class

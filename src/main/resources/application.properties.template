@@ -1,8 +1,9 @@
-spring.application.name=api
-
-spring.datasource.url=jdbc:mysql://localhost:TU_PUERTO/BASE_DATOS_db
-spring.datasource.username=TU_USUARIO
-spring.datasource.password=TU_CONTRASENIA
-
+spring.datasource.url=jdbc:mysql://localhost:3306/icnu_db
+spring.datasource.username=CAMBIAR_POR_REAL
+spring.datasource.password=CAMBIAR_POR_REAL
 spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
+spring.jpa.open-in-view=false
+app.jwt.secret=CAMBIAR_POR_UN_SECRETO_DE_AL_MENOS_32_CARACTERES
+app.jwt.expiration-hours=24
+app.bootstrap-admin.email=
+app.bootstrap-admin.password=

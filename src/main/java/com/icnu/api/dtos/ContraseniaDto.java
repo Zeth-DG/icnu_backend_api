@@ -1,23 +1,15 @@
 package com.icnu.api.dtos;
 
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
-public class ContraseniaDto {
-    private String contraseniaActual;
-    private String contraseniaNueva;
+public record ContraseniaDto(
+        @NotBlank(message = "La contraseña actual es obligatoria.")
+        String contraseniaActual,
 
-    public ContraseniaDto(String contraseniaActual, String contraseniaNueva) {
-        this.contraseniaActual = contraseniaActual;
-        this.contraseniaNueva = contraseniaNueva;
-    }//constructor
+        @NotBlank(message = "La nueva contraseña es obligatoria.")
+        @Size(min = 8, max = 72,
+                message = "La nueva contraseña debe tener entre 8 y 72 caracteres.")
+        String contraseniaNueva) {
+}//record
 
-    public String getContraseniaActual() {
-        return contraseniaActual;
-    }//getContraseniaActual
-
-    public String getContraseniaNueva() {
-        return contraseniaNueva;
-    }//getContraseniaNueva
-
-}//ContraseniaDto
