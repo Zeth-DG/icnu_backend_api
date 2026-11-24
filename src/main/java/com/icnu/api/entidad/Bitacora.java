@@ -36,7 +36,4 @@ public class Bitacora {
     @JoinColumn(name = "accion_id_accion")
     private Accion accion;
 
-    public boolean existById(Long id) {
-        return true;
-    }
 }//class Bitacora

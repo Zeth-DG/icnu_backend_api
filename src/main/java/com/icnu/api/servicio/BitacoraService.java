@@ -90,30 +90,19 @@ public class BitacoraService {
 
 
     @Transactional
-    public Bitacora uppdateBitacora (Long id, Bitacora bitacora) {
+    public BitacoraResponseDto uppdateBitacora (Long id, BitacoraRequestDto request) {
 
-        Bitacora  bit = bitacoraRepository.findById(id)
+        // Busca bitácora existente
+        Bitacora bit = bitacoraRepository.findById(id)
+                .orElseThrow( () -> new RuntimeException("Bitácora no encontrada"));
 
-        .orElseThrow( () -> new RuntimeException("Bitácora no encontrada"));
+        // Recupera usuario que realiza la modificación
+        Usuario usuario = usuarioRepository.findById(request.usuarioId())
+                .orElseThrow( () -> new RuntimeException("Usuario no encontrado"));
 
-        if(bitacora.getFecha() != null )
-            bit.setFecha(bitacora.getFecha()); //actualiza fecha si se recibió
+        if (){} //if
+ )
 
-
-        if(bitacora.getNotas() !=null)
-            bit.setNotas(bitacora.getNotas().trim());
-
-        if(bitacora.getAccion() != null && bitacora.getAccion().getId() != null ) {
-            Accion accion = accionRepository.findById(bitacora.getAccion().getId())
-                            .orElseThrow( () -> new RuntimeException("Acción no encontrada"));
-
-            bit.setAccion(accion);
-        }
-
-            Bitacora b= bitacoraRepository.save(bit);
-
-
-        return b;
     } // updateBitacora
 
 
